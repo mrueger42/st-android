@@ -45,9 +45,9 @@ int jnilogf(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	result = __android_log_vprint(ANDROID_LOG_INFO, tag, fmt, args);
-	char str[10000];
-	vsnprintf(str, 9999, fmt, args);
-	jnilog(str);
+//	char str[10000];
+//	vsnprintf(str, 9999, fmt, args);
+//	jnilog(str);
 	va_end(args);
 	return result;
 }
@@ -57,9 +57,9 @@ int sdprintf(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	result = __android_log_vprint(ANDROID_LOG_INFO, "Smalltalk", fmt, args);
-	char str[10000];
-	vsnprintf(str, 9999, fmt, args);
-	jnilog(str);
+//	char str[10000];
+//	vsnprintf(str, 9999, fmt, args);
+//	jnilog(str);
 	va_end(args);
 	return result;
 }

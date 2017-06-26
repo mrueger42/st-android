@@ -66,22 +66,23 @@ public class VMApplication extends Application {
 			return;
 		}
 		// this "works"
-		createVM(activity, displayView);
+//		createVM(activity, displayView);
+//		vm.runVM();
 		// this crashes
-//		createVMThread(activity, displayView);
+		createVMThread(activity, displayView);
 	}
 
 	private void createVM(Activity activity, DisplayView displayView) {
 		Log.d("vm", "create VM");
 		vm = new VM(this);
 		try {
-			Log.d("vm", "launch VM");
+			Log.d("vm", "load image");
 			vm.launchImage(activity, displayView);
 		} catch (IOException e) {
 			e.printStackTrace();
 			exit(-1);
 		}
-		vm.runVM();
+//		vm.runVM();
 	}
 
 	public void reRunVM() {
@@ -89,14 +90,16 @@ public class VMApplication extends Application {
 	}
 
 	private void createVMThread(final Activity activity, final DisplayView displayView) {
+		Log.d("vm", "create threaded VM");
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				Log.d("vm", "wait for run VM");
-				Log.d("vm", "run VM");
+				Log.d("vm", "create VM on thread");
 				createVM(activity, displayView);
+				vm.runVM();
 			}
 		}).start();
+		Log.d("vm", "threaded VM started");
 	}
 
 }

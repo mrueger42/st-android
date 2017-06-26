@@ -41,15 +41,24 @@
 
 #define MAXPATHLEN 256
 
-jmp_buf jmpBufEnter;
 extern struct VirtualMachine *interpreterProxy;
 int scrw =0, scrh=0;
+jobject displayBitmap = NULL;
 
 JNIEnv *CogEnv = NULL;
 jobject CogVM = NULL;
 
 jclass vmClass = 0;
 jmethodID invalidate;
+jmethodID getDisplayBitmap;
+
+JavaVM *java_vm;
+
+jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+	jnilog("JNI_OnLoad");
+	java_vm = vm;
+	return JNI_VERSION_1_6;
+}
 
 void setupJNI(JNIEnv *jniEnv, jobject jniVM) {
 	CogEnv = jniEnv;
@@ -64,6 +73,15 @@ void setupJNI(JNIEnv *jniEnv, jobject jniVM) {
 		}
 		jnilog("get invalidate");
 		invalidate = (*CogEnv)->GetMethodID(CogEnv, vmClass, "invalidate", "(IIII)V");
+		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
+			(*CogEnv)->ExceptionDescribe(CogEnv);
+		}
+		jnilog("get getDisplayBitmap");
+		getDisplayBitmap = (*CogEnv)->GetMethodID(CogEnv, vmClass, "getDisplayBitmap", "()Landroid/graphics/Bitmap;");
+		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
+			(*CogEnv)->ExceptionDescribe(CogEnv);
+			exit(-1);
+		}
 	}
 }
 
@@ -110,37 +128,14 @@ int Java_org_smalltalk_android_display_DisplayView_sendTouchEvent(JNIEnv *env, j
 	return runVM();
 }
 
-int Java_org_smalltalk_android_vm_VM_runVM(JNIEnv *env, jobject self) {
+int Java_org_smalltalk_android_vm_VM_runVM(JNIEnv *jniEnv, jobject jVMObject) {
 	jnilog("Java_org_smalltalk_android_vm_VM_runVM");
-//	JNIEnv *oldEnv = CogEnv;
-//	jobject *oldCog = CogVM;
-	CogEnv = env;
-//	CogVM = (*env)->NewLocalRef(env, self);
+	setupJNI(jniEnv, jVMObject);
+//	CogEnv = env;
 	int rc = runVM();
-//	(*env)->DeleteLocalRef(env, COGVM);
-//	CogEnv = oldEnv;
-//	CogVM = oldCog;
 	return rc;
 }
-/*
-static JavaVM *java_vm;
 
-jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-	jnilog("JNI_OnLoad");
-	java_vm = vm;
-
-	// Get JNI Env for all function calls
-	JNIEnv* jniEnv;
-	if ((*vm)->GetEnv(vm, (void **) &jniEnv, JNI_VERSION_1_6) != JNI_OK) {
-		jnilog ("GetEnv failed.");
-		return -1;
-	}
-
-	jnilog ("FindClass");
-	jclass 	cls1 = (*jniEnv)->FindClass(jniEnv, "org/smalltalk/android/vm/VM");
-	return JNI_VERSION_1_6;
-}
-*/
 int Java_org_smalltalk_android_vm_VM_launchImage(
 		JNIEnv *jniEnv,
 		jobject jVMObject,
@@ -152,7 +147,7 @@ int Java_org_smalltalk_android_vm_VM_launchImage(
 		int h
 		) {
 	start_logger();
-	jnilog("Java_org_smalltalk_android_vm_VM_launchImage");
+	jnilogf("Java_org_smalltalk_android_vm_VM_launchImage w %d h %d", w, h);
 	setupJNI(jniEnv, jVMObject);
 
 	scrw = w;
@@ -198,8 +193,6 @@ int Java_org_smalltalk_android_vm_VM_launchImage(
 
 	rc = main(argl - 1, argc, envp);
 
-//	Java_org_smalltalk_android_vm_VM_runVM(jniEnv, jVMObject);
-
 	return rc;
 }
 
@@ -208,27 +201,48 @@ void Java_org_smalltalk_android_vm_VM_surelyExit(JNIEnv *env, jobject self) {
 	exit(0);
 }
 
+/*
 
+void* enterInterpretExec(void) {
+	JNIEnv *envLocal;
+	jnilog("running exec");
+//	if ((*java_vm)->GetEnv(java_vm, (void **) &envLocal, JNI_VERSION_1_6) != JNI_OK) {
+//		jnilog ("GetEnv2 failed.");
+//		exit(-1);
+//	}
+//	jnilog ("GetEnv2 succeeded.");
+	if ((*java_vm)->AttachCurrentThread(java_vm, &envLocal, NULL) != JNI_OK) {
+		jnilog("AttachCurrentThread failed");
+		exit(-1);
+	}
+	setupJNI(envLocal, java_vm);
+	// call the exec
+	jnilog("call exec");
+}
+static pthread_t vm_thread;
 
-void jumpOut(int reasonOfTheJumpOut) {
-	jnilog("would jump out " + reasonOfTheJumpOut);
-//	longjmp(jmpBufEnter, reasonOfTheJumpOut);
+void startVMThread() {
+	// spawn the exec thread
+	jnilog("spawn vm thread");
+	if(pthread_create(&vm_thread, 0, enterInterpretExec, 0) == -1) {
+		jnilog("spawn vm thread failed");
+		exit(-1);
+	}
+//	pthread_detach(thr);
 }
 
+//extern sqInt interpret2(void);
+*/
 int runVM() {
 	jnilog("runVM");
-//	int reasonOfLeaving = setjmp(jmpBufEnter);
-//	jnilog("setjmp " + reasonOfLeaving);
-//	if (reasonOfLeaving == 0) {
-//		printPhaseTime(2);
-		jnilog("interpret");
-		interpret();
-		jnilog("interpret done");
+//	jnilog("interpret");
+	interpret();
+//	jnilog("vm enterSmalltalkExecutiveImplementation");
+//	interpret2();
+//	enterSmalltalkExecutiveImplementation();
+//	startVMThread();
+	jnilog("interpret done");
 	return 0;
-//	} else {
-//		jnilog("leaving");
-//	}
-//	return reasonOfLeaving;
 }
 
 int splitcmd(char *cmd, int maxargc, char **argv) {

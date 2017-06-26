@@ -2634,21 +2634,31 @@ interpret(void)
 	if(!asserta((sizeof(jumpTable)/sizeof(jumpTable[0])) >= 512))
 		error("bytecode jumpTable too small");
 #endif
-
 	if (GIV(stackLimit) == 0) {
+		jnilog("coint initStackPagesAndInterpret");
 		/* begin initStackPagesAndInterpret */
 		stackPageBytes = stackPageByteSize();
+		jnilogf("stackPageBytes (size?) %d", stackPageBytes);
 		/* begin computeStackZoneSize */
+		jnilogf("sizeof(CogStackPage) %d", sizeof(CogStackPage));
+		jnilogf("numStackPages %d", numStackPages);
+		jnilogf("stackPageByteSize() %d", stackPageByteSize());
+		jnilogf("BytesPerWord %d", BytesPerWord);
 		stackPagesBytes = (GIV(numStackPages) * ((sizeof(CogStackPage)) + (stackPageByteSize()))) + BytesPerWord;
+		jnilogf("stackPageBytes %d", stackPageBytes);
 		theStackMemory = alloca(stackPagesBytes);
+		jnilog("stackPageBytes allocated");
 		memset(theStackMemory, 0, stackPagesBytes);
+		jnilog("set unexecutable");
 		sqMakeMemoryNotExecutableFromTo(((usqInt)(startOfMemory())), ((usqInt)GIV(endOfMemory)));
 		sqMakeMemoryNotExecutableFromTo(((usqInt)theStackMemory), (((usqInt)theStackMemory)) + stackPagesBytes);
+		jnilog("slot pages");
 		initializeStacknumSlotspageSize(theStackMemory, stackPagesBytes / BytesPerWord, stackPageBytes / BytesPerWord);
 		assert((minimumUnusedHeadroom()) == stackPageBytes);
 		loadInitialContext();
 		ioInitHeartbeat();
 		initialEnterSmalltalkExecutive();
+		jnilog("return after enter exec");
 		return null;
 	}
 	browserPluginInitialiseIfNeeded();
@@ -17302,7 +17312,6 @@ ensureContextIsExecutionSafeAfterAssignToStackPointer(sqInt aContext)
 	ensureContextHasBytecodePC(aContext);
 }
 
-
 /*	Main entry-point into the interpreter at each execution level, where an
 	execution level is either the start of execution or reentry for a
 	callback. Capture the C stack
@@ -17318,6 +17327,7 @@ enterSmalltalkExecutiveImplementation(void)
 {   DECL_MAYBE_SQ_GLOBAL_STRUCT
     sqInt aMethodObj;
 
+	jnilog("coint enterSmalltalkExecutiveImplementation");
 	assertCStackWellAligned();
 	ceCaptureCStackPointers();
 	sigsetjmp(reenterInterpreter, 0);

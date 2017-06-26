@@ -30,6 +30,7 @@ package org.smalltalk.android.vm;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -127,6 +128,11 @@ public class VM {
 	private Activity activity;
 	private DisplayView displayView;
 
+	public Bitmap getDisplayBitmap() {
+		Log.d("vm", "get display bitmap");
+		return displayView.getDisplayBitmap();
+	}
+
 	public void invalidate(final int left, final int top, final int right, final int bottom) {
 		Log.d("vm", "invalidate view");
 		activity.runOnUiThread(new Runnable() {
@@ -137,16 +143,6 @@ public class VM {
 		});
 	}
 
-	public void reRunVM() {
-		activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				Log.d("vm", "re-run VM");
-				int result = runVM();
-				Log.d("vm", "finished running VM " + result);
-			}
-		});
-	}
 	public native int runVM();
 
 	public native int launchImage(String exeName, String options, String imageName, String cmd, int w, int h);

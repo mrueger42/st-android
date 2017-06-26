@@ -31,9 +31,11 @@
 
 #include <jni.h>
 #include <fcntl.h>
+#include <sched.h>
 
-#define JUMP_FOR_GRAPHIC 3
-#define JUMP_FOR_IDLE 2
+#include <android/bitmap.h>
+
+extern int jnilogf(const char *fmt, ...);
 
 extern int inputEventSemaIndex;
 extern struct VirtualMachine *interpreterProxy;
@@ -45,10 +47,11 @@ extern jobject CogVM;
 
 extern jclass vmClass = 0;
 extern jmethodID invalidate;
+extern jmethodID getDisplayBitmap;
 
-extern void jumpOut(int);
 extern sqInt primitiveFail(void);
 extern int scrw, scrh;
+extern jobject displayBitmap;
 
 #include "sqUnixEvent.c"
 
@@ -132,35 +135,113 @@ static sqInt display_ioSetFullScreen(sqInt fullScreen)
   return 0;
 }
 
-//Quit the VM interpretation but explain why for graphical update
+void updateRow(void* pixels, int *dispBits, int left, int right){
+	int xx, yy;
+	uint32_t* line;
+
+	line = (uint32_t*)pixels;
+	for(xx = left; xx < right; xx++){
+		line[xx] = dispBits[xx];
+	}
+}
+
+void updateDisplayBitmap(sqInt left, sqInt right, sqInt top, sqInt bottom)
+{
+	AndroidBitmapInfo  info;
+	void*              pixels;
+	int                ret;
+	jobject displayBitmap;
+
+	jnilog("try getDisplayBitmap");
+	if(CogEnv && CogVM) {
+		if (invalidate) {
+			jnilog("call jni getDisplayBitmap");
+			displayBitmap = (*CogEnv)->CallObjectMethod(CogEnv, CogVM, getDisplayBitmap);
+		} else {
+			jnilog("getDisplayBitmap not ready");
+		}
+	} else {
+		jnilog("globals not ready");
+	}
+
+	if (displayBitmap) {
+		jnilog("got bitmap");
+	} else {
+		jnilog("no bitmap");
+	}
+	jnilog("get info");
+	if ((ret = AndroidBitmap_getInfo(CogEnv, displayBitmap, &info)) < 0) {
+		jnilogf("AndroidBitmap_getInfo() failed ! error=%d", ret);
+		return;
+	}
+
+	jnilog("check format");
+	if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+		jnilogf("Bitmap format is not RGBA_8888 !");
+		return;
+	}
+
+	jnilog("lock pixels");
+	if ((ret = AndroidBitmap_lockPixels(CogEnv, displayBitmap, &pixels)) < 0) {
+		jnilogf("AndroidBitmap_lockPixels() failed ! error=%d", ret);
+	}
+
+	// do your thing here
+	int row;
+	sqInt formObj = interpreterProxy->displayObject();
+	sqInt formBits = interpreterProxy->fetchPointerofObject(0, formObj);
+	sqInt width = interpreterProxy->fetchIntegerofObject(1, formObj);
+	sqInt height = interpreterProxy->fetchIntegerofObject(2, formObj);
+	sqInt depth = interpreterProxy->fetchIntegerofObject(3, formObj);
+	int *dispBits = interpreterProxy->firstIndexableField(formBits);
+	for(row = top; row < bottom; row++) {
+		int ofs = width*row+left;
+		updateRow(pixels, dispBits+ofs, left, right);
+		pixels = (char*)pixels + info.stride;
+	}
+
+
+	jnilog("unlock pixels");
+	AndroidBitmap_unlockPixels(CogEnv, displayBitmap);
+	jnilog("update bitmap done");
+}
 
 static sqInt display_ioForceDisplayUpdate(void)
 {
 	jnilog("ioForceDisplayUpdate");
-//	if(sqInvalidate && displayEnv && displayView) {
-//		jnilog("call jni invalidate");
-//		(*displayEnv)->CallVoidMethod(displayEnv, displayView, sqInvalidate, 0, 0, scrw, scrh);
-//	}
+	jnilog("update display bitmap");
+	updateDisplayBitmap(0, 0, scrw, scrh);
+
+	jnilog("try invalidate");
+	if(CogEnv && CogVM) {
+		if (invalidate) {
+			jnilog("yield");
+			sched_yield();
+			jnilog("call jni invalidate");
+			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, 0, 0, scrw, scrh);
+		} else {
+			jnilog("invalidate not ready");
+		}
+	} else {
+		jnilog("globals not ready");
+	}
 	jnilog("ioForceDisplayUpdate done");
-//	jumpOut(JUMP_FOR_GRAPHIC);
 	return 1;
 }
 
-//Quit the VM interpretation but explain why for graphical update
-
-//static sqInt display_ioShowDisplay(sqInt dispBitsIndex, sqInt width, sqInt height, sqInt depth,
-//				   sqInt affectedL, sqInt affectedR, sqInt affectedT, sqInt affectedB)
-//{
-//	jumpOut(JUMP_FOR_GRAPHIC);
-//	return 1;
-//}
 
 static sqInt display_ioShowDisplay(sqInt dispBitsIndex, sqInt width, sqInt height, sqInt depth,
 								   sqInt affectedL, sqInt affectedR, sqInt affectedT, sqInt affectedB)
 {
 	jnilog("ioShowDisplay");
+	jnilog("update display bitmap");
+	updateDisplayBitmap(affectedL, affectedT, affectedR, affectedB);
+
+	jnilog("try invalidate");
 	if(CogEnv && CogVM) {
 		if (invalidate) {
+			jnilog("yield");
+			sched_yield();
 			jnilog("call jni invalidate");
 			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, affectedL, affectedT, affectedR, affectedB);
 		} else {
@@ -170,7 +251,6 @@ static sqInt display_ioShowDisplay(sqInt dispBitsIndex, sqInt width, sqInt heigh
 		jnilog("globals not ready");
 	}
 	jnilog("ioShowDisplay done");
-//	jumpOut(JUMP_FOR_GRAPHIC);
 	return 1;
 }
 static sqInt display_ioHasDisplayDepth(sqInt i)

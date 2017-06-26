@@ -75,6 +75,8 @@
 # include <sys/proc.h>
 #endif
 
+extern int jnilogf(const char *fmt, ...);
+
 #undef	DEBUG_MODULES
 
 #undef	IMAGE_DUMP				/* define to enable SIGHUP and SIGQUIT handling */
@@ -134,7 +136,7 @@ int inModalLoop= 0;
 #endif
 
 int sqIgnorePluginErrors	= 0;
-int runInterpreter		= 0;
+int runInterpreter		= 1;
 
 #include "SqDisplay.h"
 #include "SqSound.h"
@@ -2262,6 +2264,9 @@ getRedzoneSize()
 
 	do kill(getpid(),SIGPROF); while (!p);
 	(void)sigaction(SIGPROF, &old, 0);
+	jnilogf("redzone old %ld", &old);
+//	jnilogf("redzone handler_action %ld", &handler_action);
+//	jnilogf("redzone size %ld", (char *)min(&old,&handler_action) - sizeof(struct sigaction) - p);
 	return (char *)min(&old,&handler_action) - sizeof(struct sigaction) - p;
 }
 
@@ -2277,8 +2282,15 @@ static int stackPageHeadroom;
 int
 osCogStackPageHeadroom()
 {
-	if (!stackPageHeadroom)
-		stackPageHeadroom = getRedzoneSize() + 1024;
+	if (!stackPageHeadroom) {
+//		int redZoneSize = getRedzoneSize();
+		int redZoneSize = 900;
+		jnilogf("redzone size %d", redZoneSize);
+//		if (redZoneSize < -10000000) {
+//			redZoneSize = -4104252;
+//		} //-4104252 -453522484
+		stackPageHeadroom = redZoneSize + 1024;
+	}
 	return stackPageHeadroom;
 }
 #endif /* COGVM */
