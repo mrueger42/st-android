@@ -34,6 +34,10 @@
  * NOTE: this file is included by the window support files that need it.
  */
 
+#include <sq.h>
+#include "sqUnixMain.h"
+#include "sqUnixGlobals.h"
+
 #if defined(DEBUG_EVENTS)
 # undef DEBUG_EVENTS
 # define DEBUG_EVENTS 1
@@ -264,6 +268,7 @@ static void recordWindowEvent(int action, int v1, int v2, int v3, int v4, int wi
 
 static sqInt display_ioGetNextEvent(sqInputEvent *evt)
 {
+  jnilog("display_ioGetNextEvent");
   if (iebEmptyP())
     ioProcessEvents();
   LogEventChain((dbgEvtChF,"ioGNE%s",iebEmptyP()?"_":"!\n"));

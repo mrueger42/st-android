@@ -53,19 +53,27 @@ extern sqInt primitiveFail(void);
 extern int scrw, scrh;
 extern jobject displayBitmap;
 
-#include "sqUnixEvent.c"
+// #include "sqUnixEvent.c"
+
+extern sqInputEvent inputEventBuffer[];
+
+extern int iebIn;
+extern int iebOut;
+
+#define IEB_SIZE	 64	/* must be power of 2 */
+
+#define iebEmptyP()	(iebIn == iebOut)
+#define iebAdvance(P)	(P= ((P + 1) & (IEB_SIZE - 1)))
+
+extern sqInputEvent noEvent;
+
+extern sqInt getButtonState(void);
 
 
 
 /****************************************************************************/
 /* Display control                                                          */   
 /****************************************************************************/
-
-//maybe to change later
-static int handleEvents(void)
-{
-  return 0;	/* 1 if events processed */
-}
 
 static sqInt display_clipboardSize(void)
 {
@@ -92,12 +100,11 @@ static sqInt display_ioBeep(void)
 {
   return 0;
 }
-//Quit the VM interpretation but explain why for Idle
+
 static sqInt display_ioRelinquishProcessorForMicroseconds(sqInt microSeconds)
 {
 //	jnilog("ioRelinquishProcessorForMicroseconds " + microSeconds);
 //	sleep(10);
-//  jumpOut(JUMP_FOR_IDLE);
   return 0;
 }
 
@@ -107,7 +114,66 @@ static sqInt display_ioProcessEvents(void)
 {
 //	jnilog("ioProcessEvents");
 	aioPoll(0);
-	return (0);
+	return (iebEmptyP() ? 0 : 1);
+}
+
+static sqInt display_ioGetNextEvent(sqInputEvent *evt)
+{
+//	jnilog("display_ioGetNextEvent");
+	if (iebEmptyP())
+		ioProcessEvents();
+	LogEventChain((dbgEvtChF,"ioGNE%s",iebEmptyP()?"_":"!\n"));
+	if (iebEmptyP())
+		return false;
+	*evt= inputEventBuffer[iebOut];
+#if DEBUG_EVENTS
+	if (evt->type == EventTypeMouse) {
+   printf( "(ioGetNextEvent) MOUSE evt: time: %d x: %d y: %d ", evt->timeStamp, evt->unused1, evt->unused2);
+   printButtons( evt->unused3);
+   printf("\n");
+  }
+  if (evt->type == EventTypeKeyboard) {
+   printf( "(ioGetNextEvent) KEYBOARD evt: time: %d char: %d utf32: %d ", evt->timeStamp, evt->unused1, evt->unused4);
+   printf("\n");
+  }
+
+#endif
+	iebAdvance(iebOut);
+	return true;
+}
+
+/* retrieve the next input event from the queue */
+
+static sqInt display_ioPeekKeystroke(void) {
+	jnilog("deprecated display_ioPeekKeystroke");
+	return 0;
+}	/* DEPRECATED */
+
+static sqInt display_ioGetKeystroke(void) {
+	jnilog("deprecated display_ioGetKeystroke");
+	return 0;
+}	/* DEPRECATED */
+
+static sqInt display_ioGetButtonState(void)
+{
+	jnilog("deprecated display_ioGetButtonState");
+	ioProcessEvents();  /* process all pending events */
+	return getButtonState();
+}
+
+typedef struct
+{
+	int x, y;
+} SqPoint;
+
+extern SqPoint mousePosition;
+
+static sqInt display_ioMousePoint(void)
+{
+	jnilog("deprecated display_ioMousePoint");
+	ioProcessEvents();  /* process all pending events */
+	/* x is high 16 bits; y is low 16 bits */
+	return (mousePosition.x << 16) | (mousePosition.y);
 }
 
 static sqInt display_ioScreenDepth(void)
@@ -145,43 +211,31 @@ void updateRow(void* pixels, int *dispBits, int left, int right){
 	}
 }
 
-void updateDisplayBitmap(sqInt left, sqInt right, sqInt top, sqInt bottom)
+void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 {
 	AndroidBitmapInfo  info;
 	void*              pixels;
 	int                ret;
-	jobject displayBitmap;
 
-	jnilog("try getDisplayBitmap");
-	if(CogEnv && CogVM) {
-		if (invalidate) {
-			jnilog("call jni getDisplayBitmap");
-			displayBitmap = (*CogEnv)->CallObjectMethod(CogEnv, CogVM, getDisplayBitmap);
+//	jnilogf("update bitmap l %d t %d r %d b %d", left, right, top, bottom);
+	if (!displayBitmap) {
+		if(CogEnv && CogVM) {
+			if (getDisplayBitmap) {
+				displayBitmap = (*CogEnv)->CallObjectMethod(CogEnv, CogVM, getDisplayBitmap);
+			} else {
+			}
 		} else {
-			jnilog("getDisplayBitmap not ready");
 		}
-	} else {
-		jnilog("globals not ready");
 	}
-
-	if (displayBitmap) {
-		jnilog("got bitmap");
-	} else {
-		jnilog("no bitmap");
-	}
-	jnilog("get info");
 	if ((ret = AndroidBitmap_getInfo(CogEnv, displayBitmap, &info)) < 0) {
 		jnilogf("AndroidBitmap_getInfo() failed ! error=%d", ret);
 		return;
 	}
-
-	jnilog("check format");
 	if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
 		jnilogf("Bitmap format is not RGBA_8888 !");
 		return;
 	}
 
-	jnilog("lock pixels");
 	if ((ret = AndroidBitmap_lockPixels(CogEnv, displayBitmap, &pixels)) < 0) {
 		jnilogf("AndroidBitmap_lockPixels() failed ! error=%d", ret);
 	}
@@ -194,30 +248,24 @@ void updateDisplayBitmap(sqInt left, sqInt right, sqInt top, sqInt bottom)
 	sqInt height = interpreterProxy->fetchIntegerofObject(2, formObj);
 	sqInt depth = interpreterProxy->fetchIntegerofObject(3, formObj);
 	int *dispBits = interpreterProxy->firstIndexableField(formBits);
+
+//	jnilog("update rows");
 	for(row = top; row < bottom; row++) {
-		int ofs = width*row+left;
+		int ofs = width*row;
 		updateRow(pixels, dispBits+ofs, left, right);
 		pixels = (char*)pixels + info.stride;
 	}
 
-
-	jnilog("unlock pixels");
 	AndroidBitmap_unlockPixels(CogEnv, displayBitmap);
-	jnilog("update bitmap done");
 }
 
 static sqInt display_ioForceDisplayUpdate(void)
 {
-	jnilog("ioForceDisplayUpdate");
-	jnilog("update display bitmap");
 	updateDisplayBitmap(0, 0, scrw, scrh);
 
-	jnilog("try invalidate");
 	if(CogEnv && CogVM) {
 		if (invalidate) {
-			jnilog("yield");
 			sched_yield();
-			jnilog("call jni invalidate");
 			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, 0, 0, scrw, scrh);
 		} else {
 			jnilog("invalidate not ready");
@@ -225,24 +273,20 @@ static sqInt display_ioForceDisplayUpdate(void)
 	} else {
 		jnilog("globals not ready");
 	}
-	jnilog("ioForceDisplayUpdate done");
 	return 1;
 }
 
 
 static sqInt display_ioShowDisplay(sqInt dispBitsIndex, sqInt width, sqInt height, sqInt depth,
-								   sqInt affectedL, sqInt affectedR, sqInt affectedT, sqInt affectedB)
+								   sqInt affectedL, sqInt affectedT, sqInt affectedR, sqInt affectedB)
 {
-	jnilog("ioShowDisplay");
-	jnilog("update display bitmap");
+//	jnilogf("update bitmap i %d w %d h %d d %d", dispBitsIndex, width, height, depth);
+//	jnilogf("update bitmap l %d t %d r %d b %d", affectedL, affectedT, affectedR, affectedB);
 	updateDisplayBitmap(affectedL, affectedT, affectedR, affectedB);
 
-	jnilog("try invalidate");
 	if(CogEnv && CogVM) {
 		if (invalidate) {
-			jnilog("yield");
 			sched_yield();
-			jnilog("call jni invalidate");
 			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, affectedL, affectedT, affectedR, affectedB);
 		} else {
 			jnilog("invalidate not ready");
@@ -250,7 +294,6 @@ static sqInt display_ioShowDisplay(sqInt dispBitsIndex, sqInt width, sqInt heigh
 	} else {
 		jnilog("globals not ready");
 	}
-	jnilog("ioShowDisplay done");
 	return 1;
 }
 static sqInt display_ioHasDisplayDepth(sqInt i)

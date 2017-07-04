@@ -134,7 +134,7 @@ public class VM {
 	}
 
 	public void invalidate(final int left, final int top, final int right, final int bottom) {
-		Log.d("vm", "invalidate view");
+//		Log.d("vm", "invalidate view");
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {

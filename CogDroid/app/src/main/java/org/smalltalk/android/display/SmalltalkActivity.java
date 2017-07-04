@@ -1,5 +1,6 @@
 package org.smalltalk.android.display;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -12,7 +13,7 @@ import java.io.IOException;
 
 import static java.lang.System.exit;
 
-public class SmalltalkActivity extends AppCompatActivity {
+public class SmalltalkActivity extends Activity {
 
 	private View displayFrame;
 	private DisplayView displayView;

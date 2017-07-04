@@ -38,6 +38,7 @@
 #include "sqAndroidLogger.c"
 #include <jni.h>
 #include <sq.h>
+#include "sqAndroidEvents.c"
 
 #define MAXPATHLEN 256
 
@@ -92,46 +93,26 @@ int Java_org_smalltalk_android_display_DisplayView_setScreenSize(JNIEnv *env, jo
 	return 0;
 }
 
-int Java_org_smalltalk_android_display_DisplayView_updateDisplay(JNIEnv *env, jobject self,
-																 jintArray bits, int w, int h,
-																 int d, int left, int top, int right, int bottom) {
-
-	jnilog("Java_org_smalltalk_android_display_DisplayView_updateDisplay");
-	int row;
-	sqInt formObj = interpreterProxy->displayObject();
-	sqInt formBits = interpreterProxy->fetchPointerofObject(0, formObj);
-	sqInt width = interpreterProxy->fetchIntegerofObject(1, formObj);
-	sqInt height = interpreterProxy->fetchIntegerofObject(2, formObj);
-	sqInt depth = interpreterProxy->fetchIntegerofObject(3, formObj);
-	int *dispBits = interpreterProxy->firstIndexableField(formBits);
-	for(row = top; row < bottom; row++) {
-		int ofs = width*row+left;
-		(*env)->SetIntArrayRegion(env, bits, ofs, right-left, dispBits+ofs);
-	}
-	return 1;
-}
-
 int Java_org_smalltalk_android_display_DisplayView_sendKeyboardEvent(JNIEnv *env, jobject self, int arg3, int arg4, int arg5, int arg6) {
 	jnilog("Java_org_smalltalk_android_display_DisplayView_sendKeyboardEvent");
 //	int empty = iebEmptyP();
-//	recordKeyboardEvent(arg3, arg4, arg5, arg6);
-	return runVM();
+	recordKeyboardEvent(arg3, arg4, arg5, arg6);
+	return 0;
 }
 
 int Java_org_smalltalk_android_display_DisplayView_sendTouchEvent(JNIEnv *env, jobject self, int arg3, int arg4, int arg5) {
 	jnilog("Java_org_smalltalk_android_display_DisplayView_sendTouchEvent");
 //	int empty = iebEmptyP();
-//	mousePosition.x = arg3;
-//	mousePosition.y = arg4;
-//	buttonState = arg5;
-//	recordMouseEvent();
-	return runVM();
+	mousePosition.x = arg3;
+	mousePosition.y = arg4;
+	buttonState = arg5;
+	recordMouseEvent();
+	return 0;
 }
 
 int Java_org_smalltalk_android_vm_VM_runVM(JNIEnv *jniEnv, jobject jVMObject) {
 	jnilog("Java_org_smalltalk_android_vm_VM_runVM");
 	setupJNI(jniEnv, jVMObject);
-//	CogEnv = env;
 	int rc = runVM();
 	return rc;
 }
@@ -201,46 +182,10 @@ void Java_org_smalltalk_android_vm_VM_surelyExit(JNIEnv *env, jobject self) {
 	exit(0);
 }
 
-/*
 
-void* enterInterpretExec(void) {
-	JNIEnv *envLocal;
-	jnilog("running exec");
-//	if ((*java_vm)->GetEnv(java_vm, (void **) &envLocal, JNI_VERSION_1_6) != JNI_OK) {
-//		jnilog ("GetEnv2 failed.");
-//		exit(-1);
-//	}
-//	jnilog ("GetEnv2 succeeded.");
-	if ((*java_vm)->AttachCurrentThread(java_vm, &envLocal, NULL) != JNI_OK) {
-		jnilog("AttachCurrentThread failed");
-		exit(-1);
-	}
-	setupJNI(envLocal, java_vm);
-	// call the exec
-	jnilog("call exec");
-}
-static pthread_t vm_thread;
-
-void startVMThread() {
-	// spawn the exec thread
-	jnilog("spawn vm thread");
-	if(pthread_create(&vm_thread, 0, enterInterpretExec, 0) == -1) {
-		jnilog("spawn vm thread failed");
-		exit(-1);
-	}
-//	pthread_detach(thr);
-}
-
-//extern sqInt interpret2(void);
-*/
 int runVM() {
 	jnilog("runVM");
-//	jnilog("interpret");
 	interpret();
-//	jnilog("vm enterSmalltalkExecutiveImplementation");
-//	interpret2();
-//	enterSmalltalkExecutiveImplementation();
-//	startVMThread();
 	jnilog("interpret done");
 	return 0;
 }
