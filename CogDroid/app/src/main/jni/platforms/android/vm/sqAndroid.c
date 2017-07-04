@@ -75,12 +75,6 @@ void setupJNI(JNIEnv *jniEnv, jobject jniVM) {
 		} else {
 			vmClass = (*CogEnv)->NewGlobalRef(CogEnv, cls1);
 		}
-		jnilog("get invalidate");
-		invalidate = (*CogEnv)->GetMethodID(CogEnv, vmClass, "invalidate", "(IIII)V");
-		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
-			(*CogEnv)->ExceptionDescribe(CogEnv);
-		}
-
 		jnilog("get lock");
 		lockCanvas = (*CogEnv)->GetMethodID(CogEnv, vmClass, "lockCanvas", "()V");
 		if ((*CogEnv)->ExceptionCheck(CogEnv)) {

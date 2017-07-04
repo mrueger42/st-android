@@ -31,10 +31,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.view.View;
 
 import org.smalltalk.android.R;
 import org.smalltalk.android.display.DisplayView;
@@ -44,16 +41,13 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import static android.content.Context.MODE_PRIVATE;
-import static java.lang.Thread.sleep;
 
 public class VM {
 
 	private Context context;
 	private String vmLibraryName;
+	private DisplayView displayView;
 
-//	static {
-//		System.loadLibrary("StackVM");
-//	}
 
 	public VM(Context context) {
 		Log.d("vm", "instantiate");
@@ -67,7 +61,6 @@ public class VM {
 	 * Fail if there is no or more than one image
 	 */
 	public void launchImage(Activity activity, DisplayView displayView) throws IOException {
-		this.activity = activity;
 		this.displayView = displayView;
 
 		String assetFolderName = context.getString(R.string.vm_asset_folder);
@@ -84,19 +77,7 @@ public class VM {
 		int result = launchImage(libraryPath, options, imagePath, cmd, displayView.getWidth(), displayView.getHeight());
 		Log.d("vm", "finished launching VM " + result);
 	}
-/*
-	public void loadImage(String executablePath, String imageName, String cmd) {
-		String imgpath = imageName;
-		File imgfile = new File(imgpath);
-		long fsize = imgfile.length();
-		int why = 0;
-//		Log.v(TAG, "loadImage: ");
-        why = this.setVMPath(executablePath, imageName, cmd);
-//		 set this from BuildConfig.headless
-		int returnCode = launchImage(executablePath, "-vm vm-display-android", imageName, cmd);
-		if (returnCode == 3) this.updateDisplayProcess();
-	}
-*/
+
 	private void copyFileFromAssetFolder(String sourceFile, AssetManager assetManager, String pathDestination) throws IOException {
 		int buflen = 65536;
 		byte[] buf = new byte[buflen];
@@ -125,22 +106,9 @@ public class VM {
 		return imagePath;
 	}
 
-	private Activity activity;
-	private DisplayView displayView;
-
 	public Bitmap getDisplayBitmap() {
 		Log.d("vm", "get display bitmap");
 		return displayView.getDisplayBitmap();
-	}
-
-	public void invalidate(final int left, final int top, final int right, final int bottom) {
-//		Log.d("vm", "invalidate view");
-		activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				displayView.invalidateDisplay(left, top, right, bottom);
-			}
-		});
 	}
 
 	public void lockCanvas() {

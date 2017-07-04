@@ -3,13 +3,11 @@ package org.smalltalk.android.display;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -88,12 +86,6 @@ public class DisplayView extends SurfaceView {
 		return display;
 	}
 
-	// called by the VM to signal the display bitmap was updated
-	public void invalidateDisplay(int left, int top, int right, int bottom) {
-//		Log.d("display view", "invalidate l " + left + " t " + top + " r " + right + " b " + bottom);
-		invalidate(left, top, right, bottom);
-	}
-
 	@Override
 	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
 		Log.d("display view", "onLayout");
@@ -114,27 +106,6 @@ public class DisplayView extends SurfaceView {
 //			display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
 			// TODO we need to signal the size change to the VM
 			// do we?
-		}
-	}
-
-	@Override
-	protected void onDraw(Canvas canvas) {
-//		Log.d("display view", "draw");
-		super.onDraw(canvas);
-
-		if (display == null) {
-			return;
-		}
-
-		canvas.drawColor(-1);
-
-		Rect dirtyRect = new Rect(0,0,0,0);
-		if(canvas.getClipBounds(dirtyRect)) {
-//			Log.d("display view", "draw at " + getLeft() + " " + getTop());
-//			Log.d("display view", "rect at " + dirtyRect.left + " " + dirtyRect.top);
-			canvas.drawBitmap(display, getLeft(), getTop() , null);
-			// TODO honor clip rectangle
-			// drawBitmap(@NonNull Bitmap bitmap, @Nullable Rect src, @NonNull Rect dst, @Nullable Paint paint)
 		}
 	}
 
