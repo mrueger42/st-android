@@ -1,6 +1,7 @@
 package org.smalltalk.android.display;
 
 
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
@@ -10,12 +11,11 @@ public class EventHandler {
 	private static final int LEFT_BUTTON_BIT = 4;
 	private static final int MIDDLE_BUTTON_BIT = 2;
 	private static final int RIGHT_BUTTON_BIT = 1;
-	private static final int radius = 2;
 
 	private DisplayView view;
-	private int buttonBits;
-	private long timestamp = System.currentTimeMillis();
-	private int lastX = -1, lastY = -1, lastBut = -1;
+//	private long timestamp = System.currentTimeMillis();
+//	private int lastX = -1, lastY = -1, lastBut = -1;
+	boolean makeNextClickRightButton = false;
 	boolean softKbdOn;
 	int ctrlOn, shiftOn;
 	int timerDelay;
@@ -28,7 +28,6 @@ public class EventHandler {
 		softKbdOn = false;
 		ctrlOn = 0;
 		shiftOn = 0;
-		buttonBits = LEFT_BUTTON_BIT;
 	}
 
 	public int getTimerDelay() {
@@ -57,7 +56,7 @@ public class EventHandler {
 	}
 
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		int rc = 0;
+		Log.d("display view", "key event " + keyCode);
 		switch(keyCode) {
 			case 59:
 			case 60:
@@ -68,18 +67,9 @@ public class EventHandler {
 				ctrlOn = 1;
 				return true;
 			case KeyEvent.KEYCODE_BACK:
-				switch(buttonBits)
-				{
-					case MIDDLE_BUTTON_BIT:
-						buttonBits = RIGHT_BUTTON_BIT;
-						break;
-					default:
-						buttonBits = MIDDLE_BUTTON_BIT;
-						break;
-				}
+				makeNextClickRightButton = true;
 				return true;
 			case 92: //KeyEvent.KEYCODE_PAGE_UP:
-				buttonBits = RIGHT_BUTTON_BIT;
 				return true;
 			case KeyEvent.KEYCODE_MENU:
 				return true;
@@ -87,14 +77,11 @@ public class EventHandler {
 				switch(event.getScanCode()) {
 					case 102:	// Home
 						emulate(1);
-						//rc = vm.relaunchInterpretation();
 						break;
 					case 107:	// End
 						emulate(4);
-						//rc = vm.relaunchInterpretation();
 						break;
 					default:
-						rc = 0;
 						break;
 				}
 				break;
@@ -106,23 +93,18 @@ public class EventHandler {
 				break;
 			case KeyEvent.KEYCODE_DPAD_RIGHT: // special handling for right arrow
 				emulate(29);
-				//rc = vm.relaunchInterpretation();
 				break;
 			case KeyEvent.KEYCODE_DPAD_LEFT: // special handling for left arrow
 				emulate(28);
-				//rc = vm.relaunchInterpretation();
 				break;
 			case KeyEvent.KEYCODE_DPAD_UP: // special handling for up arrow
 				emulate(30, (event.getScanCode() == 0) ? 2 : 0); // 2 for wheel
-				//rc = vm.relaunchInterpretation();
 				break;
 			case KeyEvent.KEYCODE_DPAD_DOWN: // special handling for down arrow
 				emulate(31, (event.getScanCode() == 0) ? 2 : 0); // 2 for wheel
-				//rc = vm.relaunchInterpretation();
 				break;
 			case KeyEvent.KEYCODE_DEL: // special handling for DEL
 				emulate(8);
-				//rc = vm.relaunchInterpretation();
 				break;
 			default:		 // send key event
 				int uchar = (keyCode != -1)?
@@ -152,21 +134,22 @@ public class EventHandler {
 		int pointerCount = event.getPointerCount();
 		switch(pointerCount){
 			case 1:
-				buttonBits = LEFT_BUTTON_BIT;break;
+				buttons = makeNextClickRightButton ? RIGHT_BUTTON_BIT : LEFT_BUTTON_BIT;
+				break;
 			case 2:
-				buttonBits = RIGHT_BUTTON_BIT;break;
+				buttons = RIGHT_BUTTON_BIT;
+				break;
 		}
 		switch (motionAction & MotionEvent.ACTION_MASK) {
 			case MotionEvent.ACTION_POINTER_DOWN:
+				break;
 			case MotionEvent.ACTION_DOWN: // 0
-				buttons = buttonBits;
 				break;
 			case MotionEvent.ACTION_MOVE: // 2
-				buttons = buttonBits;
 				break;
-
 			case MotionEvent.ACTION_UP: // 1
-//				buttons = buttonBits;
+				buttons = 0;
+				makeNextClickRightButton = false;
 				break;
 			default:
 //				Log.v(TAG, "Unsupported mtn. action: " + event.getAction());

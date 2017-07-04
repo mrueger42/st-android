@@ -50,6 +50,7 @@ public class DisplayView extends SurfaceView {
 
 	private void init() {
 		eventHandler = new EventHandler(this);
+
 		surfaceHolder = getHolder();
 		surfaceHolder.addCallback(new SurfaceHolder.Callback() {
 			@Override

@@ -2,20 +2,14 @@ package org.smalltalk.android.display;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 
 import org.smalltalk.android.R;
 import org.smalltalk.android.VMApplication;
-import org.smalltalk.android.vm.VM;
-
-import java.io.IOException;
-
-import static java.lang.System.exit;
 
 public class SmalltalkActivity extends Activity {
 
-	private View displayFrame;
 	private DisplayView displayView;
 
 	@Override
@@ -24,15 +18,26 @@ public class SmalltalkActivity extends Activity {
 
 		setContentView(R.layout.activity_smalltalk);
 
-		displayFrame = findViewById(R.id.display_frame);
 		displayView = (DisplayView)findViewById(R.id.display_view);
 	}
 
 	@Override
 	public void onStart() {
 		super.onStart();
+
 		displayView.setVisibility(View.VISIBLE);
+		displayView.setFocusable(true);
+		displayView.setFocusableInTouchMode(true);
+		displayView.requestFocus();
+
 		ensureVM();
+	}
+
+	@Override
+	public void onBackPressed() {
+		// just drop it
+//		super.onBackPressed();
+		Log.d("activity", "back pressed");
 	}
 
 	private void ensureVM() {

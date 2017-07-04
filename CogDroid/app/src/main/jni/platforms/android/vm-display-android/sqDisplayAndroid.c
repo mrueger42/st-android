@@ -224,7 +224,6 @@ void updateRow(void* pixels, int *dispBits, int left, int right){
 
 void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 {
-	AndroidBitmapInfo info;
 	void* pixels;
 	int ret;
 
@@ -233,6 +232,17 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 		if(CogEnv && CogVM) {
 			if (getDisplayBitmap) {
 				displayBitmap = (*CogEnv)->CallObjectMethod(CogEnv, CogVM, getDisplayBitmap);
+
+				AndroidBitmapInfo info;
+				if ((ret = AndroidBitmap_getInfo(CogEnv, displayBitmap, &info)) < 0) {
+					jnilogf("AndroidBitmap_getInfo() failed ! error=%d", ret);
+					return;
+				}
+				if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+					jnilogf("Bitmap format is not RGBA_8888 !");
+					return;
+				}
+
 			} else {
 				return;
 			}
@@ -240,15 +250,6 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 			return;
 		}
 	}
-	if ((ret = AndroidBitmap_getInfo(CogEnv, displayBitmap, &info)) < 0) {
-		jnilogf("AndroidBitmap_getInfo() failed ! error=%d", ret);
-		return;
-	}
-	if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
-		jnilogf("Bitmap format is not RGBA_8888 !");
-		return;
-	}
-
 	if ((ret = AndroidBitmap_lockPixels(CogEnv, displayBitmap, &pixels)) < 0) {
 		jnilogf("AndroidBitmap_lockPixels() failed ! error=%d", ret);
 	}
@@ -272,7 +273,7 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 	for(row = top; row < bottom; row++) {
 		int ofs = width*row;
 		updateRow(pixels, dispBits+ofs, left, right);
-		pixels = (char*)pixels + info.stride;
+		pixels = (char*)pixels + width*4;
 	}
 
 	AndroidBitmap_unlockPixels(CogEnv, displayBitmap);

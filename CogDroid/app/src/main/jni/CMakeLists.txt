@@ -27,8 +27,8 @@ add_definitions(
 	-DLSB_FIRST=1
 #	-DNO_VM_PROFILE=1
 
-#	-g0 -O2
-	-g
+	-g0 -O2
+#	-g
 	-m32
 	)
 
