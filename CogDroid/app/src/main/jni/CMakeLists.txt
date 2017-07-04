@@ -6,15 +6,6 @@ project(${vmName})
 
 set(CMAKE_CONFIGURATION_TYPES Debug)
 
-  include (TestBigEndian)
-
-  TEST_BIG_ENDIAN (WORDS_BIGENDIAN)
-  IF (WORDS_BIGENDIAN)
-    SET (MSB_FIRST 1)
-  ELSE ()
-    SET (LSB_FIRST 1)
-  ENDIF (WORDS_BIGENDIAN)
-
 include(directories.cmake)
 
 add_definitions(

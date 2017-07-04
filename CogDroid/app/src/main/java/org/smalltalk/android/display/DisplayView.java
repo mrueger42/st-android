@@ -11,6 +11,9 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 
 import org.smalltalk.android.VMApplication;
@@ -18,7 +21,7 @@ import org.smalltalk.stack.StackView;
 
 import java.util.Arrays;
 
-public class DisplayView extends View {
+public class DisplayView extends SurfaceView {
 
 	private static final int DISPLAY_DEPTH = 32;
 	private static final Bitmap.Config DISPLAY_CONFIG = Bitmap.Config.ARGB_8888;
@@ -27,7 +30,8 @@ public class DisplayView extends View {
 	private int width = 0;
 	private int height = 0;
 	private Bitmap display;
-	private Paint paint = new Paint();
+
+	private SurfaceHolder surfaceHolder;
 
 	public DisplayView(Context context) {
 		super(context);
@@ -46,6 +50,41 @@ public class DisplayView extends View {
 
 	private void init() {
 		eventHandler = new EventHandler(this);
+		surfaceHolder = getHolder();
+		surfaceHolder.addCallback(new SurfaceHolder.Callback() {
+			@Override
+			public void surfaceCreated(SurfaceHolder holder) {
+				Surface surface = holder.getSurface();
+				int bits[] = new int[width * height];
+				Arrays.fill(bits, 0);
+				display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
+			}
+
+			@Override
+			public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+				int bits[] = new int[width * height];
+				Arrays.fill(bits, 0);
+				display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
+			}
+
+			@Override
+			public void surfaceDestroyed(SurfaceHolder holder) {
+				display.recycle();
+				display = null;
+			}
+		});
+	}
+
+	private Canvas canvas;
+
+	public void lockCanvas() {
+		canvas = getHolder().lockCanvas();
+	}
+
+	public void unlockCanvas() {
+		canvas.drawBitmap(display, getLeft(), getTop() , null);
+		getHolder().unlockCanvasAndPost(canvas);
+		canvas = null;
 	}
 
 	// called by the VM to fetch the display bitmap
@@ -76,9 +115,9 @@ public class DisplayView extends View {
 			width = right - left;
 			height = bottom - top;
 			Log.d("display view", "create new bits w " + width + " h " + height);
-			int bits[] = new int[width * height];
-			Arrays.fill(bits, 0);
-			display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
+//			int bits[] = new int[width * height];
+//			Arrays.fill(bits, 0);
+//			display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
 			// TODO we need to signal the size change to the VM
 			// do we?
 		}
@@ -99,7 +138,7 @@ public class DisplayView extends View {
 		if(canvas.getClipBounds(dirtyRect)) {
 //			Log.d("display view", "draw at " + getLeft() + " " + getTop());
 //			Log.d("display view", "rect at " + dirtyRect.left + " " + dirtyRect.top);
-			canvas.drawBitmap(display, getLeft(), getTop() , paint);
+			canvas.drawBitmap(display, getLeft(), getTop() , null);
 			// TODO honor clip rectangle
 			// drawBitmap(@NonNull Bitmap bitmap, @Nullable Rect src, @NonNull Rect dst, @Nullable Paint paint)
 		}

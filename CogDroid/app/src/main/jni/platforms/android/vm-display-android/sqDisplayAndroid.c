@@ -49,6 +49,9 @@ extern jclass vmClass = 0;
 extern jmethodID invalidate;
 extern jmethodID getDisplayBitmap;
 
+extern jmethodID lockCanvas;
+extern jmethodID unlockCanvas;
+
 extern sqInt primitiveFail(void);
 extern int scrw, scrh;
 extern jobject displayBitmap;
@@ -202,20 +205,28 @@ static sqInt display_ioSetFullScreen(sqInt fullScreen)
 }
 
 void updateRow(void* pixels, int *dispBits, int left, int right){
-	int xx, yy;
+	int x;
 	uint32_t* line;
 
 	line = (uint32_t*)pixels;
-	for(xx = left; xx < right; xx++){
-		line[xx] = dispBits[xx];
+	for(x = left; x < right; x++){
+		unsigned char* pixel = &dispBits[x];
+		unsigned char red = *pixel;
+		unsigned char green = *(pixel+1);
+		unsigned char blue = *(pixel+2);
+		unsigned char alpha = *(pixel+3);
+//		jnilogf("%lx %x %x %x %x", dispBits[x], red, green, blue, alpha);
+		uint32_t currentPixel = (alpha << 24) | (red << 16) | (green << 8) | (blue);
+		line[x] = currentPixel;
+//		line[xx] = dispBits[xx];
 	}
 }
 
 void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 {
-	AndroidBitmapInfo  info;
-	void*              pixels;
-	int                ret;
+	AndroidBitmapInfo info;
+	void* pixels;
+	int ret;
 
 //	jnilogf("update bitmap l %d t %d r %d b %d", left, right, top, bottom);
 	if (!displayBitmap) {
@@ -223,8 +234,10 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 			if (getDisplayBitmap) {
 				displayBitmap = (*CogEnv)->CallObjectMethod(CogEnv, CogVM, getDisplayBitmap);
 			} else {
+				return;
 			}
 		} else {
+			return;
 		}
 	}
 	if ((ret = AndroidBitmap_getInfo(CogEnv, displayBitmap, &info)) < 0) {
@@ -249,6 +262,12 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 	sqInt depth = interpreterProxy->fetchIntegerofObject(3, formObj);
 	int *dispBits = interpreterProxy->firstIndexableField(formBits);
 
+//	jnilog("update region");
+//	for(row = top; row < bottom; row++) {
+//		int ofs = width*row+left;
+//		// (*SetIntArrayRegion)(JNIEnv*, jintArray, jsize, jsize, const jint*);
+//		(*CogEnv)->SetIntArrayRegion(CogEnv, pixels, ofs, right-left, dispBits+ofs);
+//	}
 //	jnilog("update rows");
 	for(row = top; row < bottom; row++) {
 		int ofs = width*row;
@@ -261,18 +280,40 @@ void updateDisplayBitmap(sqInt left, sqInt top, sqInt right, sqInt bottom)
 
 static sqInt display_ioForceDisplayUpdate(void)
 {
+	if(CogEnv && CogVM) {
+		if (lockCanvas) {
+			sched_yield();
+			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, lockCanvas);
+		} else {
+			jnilog("lock not ready");
+		}
+	} else {
+		jnilog("globals not ready");
+		return 1;
+	}
+
 	updateDisplayBitmap(0, 0, scrw, scrh);
 
 	if(CogEnv && CogVM) {
-		if (invalidate) {
+		if (unlockCanvas) {
 			sched_yield();
-			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, 0, 0, scrw, scrh);
+			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, unlockCanvas);
 		} else {
-			jnilog("invalidate not ready");
+			jnilog("unlock not ready");
 		}
 	} else {
 		jnilog("globals not ready");
 	}
+//	if(CogEnv && CogVM) {
+//		if (invalidate) {
+//			sched_yield();
+//			(*CogEnv)->CallVoidMethod(CogEnv, CogVM, invalidate, 0, 0, scrw, scrh);
+//		} else {
+//			jnilog("invalidate not ready");
+//		}
+//	} else {
+//		jnilog("globals not ready");
+//	}
 	return 1;
 }
 

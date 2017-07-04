@@ -143,6 +143,14 @@ public class VM {
 		});
 	}
 
+	public void lockCanvas() {
+		displayView.lockCanvas();
+	}
+
+	public void unlockCanvas() {
+		displayView.unlockCanvas();
+	}
+
 	public native int runVM();
 
 	public native int launchImage(String exeName, String options, String imageName, String cmd, int w, int h);

@@ -53,6 +53,9 @@ jclass vmClass = 0;
 jmethodID invalidate;
 jmethodID getDisplayBitmap;
 
+jmethodID lockCanvas;
+jmethodID unlockCanvas;
+
 JavaVM *java_vm;
 
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -77,6 +80,18 @@ void setupJNI(JNIEnv *jniEnv, jobject jniVM) {
 		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
 			(*CogEnv)->ExceptionDescribe(CogEnv);
 		}
+
+		jnilog("get lock");
+		lockCanvas = (*CogEnv)->GetMethodID(CogEnv, vmClass, "lockCanvas", "()V");
+		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
+			(*CogEnv)->ExceptionDescribe(CogEnv);
+		}
+		jnilog("get unlock");
+		unlockCanvas = (*CogEnv)->GetMethodID(CogEnv, vmClass, "unlockCanvas", "()V");
+		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
+			(*CogEnv)->ExceptionDescribe(CogEnv);
+		}
+
 		jnilog("get getDisplayBitmap");
 		getDisplayBitmap = (*CogEnv)->GetMethodID(CogEnv, vmClass, "getDisplayBitmap", "()Landroid/graphics/Bitmap;");
 		if ((*CogEnv)->ExceptionCheck(CogEnv)) {
@@ -94,15 +109,13 @@ int Java_org_smalltalk_android_display_DisplayView_setScreenSize(JNIEnv *env, jo
 }
 
 int Java_org_smalltalk_android_display_DisplayView_sendKeyboardEvent(JNIEnv *env, jobject self, int arg3, int arg4, int arg5, int arg6) {
-	jnilog("Java_org_smalltalk_android_display_DisplayView_sendKeyboardEvent");
-//	int empty = iebEmptyP();
+//	jnilog("Java_org_smalltalk_android_display_DisplayView_sendKeyboardEvent");
 	recordKeyboardEvent(arg3, arg4, arg5, arg6);
 	return 0;
 }
 
 int Java_org_smalltalk_android_display_DisplayView_sendTouchEvent(JNIEnv *env, jobject self, int arg3, int arg4, int arg5) {
-	jnilog("Java_org_smalltalk_android_display_DisplayView_sendTouchEvent");
-//	int empty = iebEmptyP();
+//	jnilog("Java_org_smalltalk_android_display_DisplayView_sendTouchEvent");
 	mousePosition.x = arg3;
 	mousePosition.y = arg4;
 	buttonState = arg5;
