@@ -3,8 +3,6 @@ package org.smalltalk.android.display;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -14,10 +12,6 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
-
-import org.smalltalk.android.VMApplication;
-import org.smalltalk.stack.StackView;
 
 import java.util.Arrays;
 
@@ -55,7 +49,6 @@ public class DisplayView extends SurfaceView {
 		surfaceHolder.addCallback(new SurfaceHolder.Callback() {
 			@Override
 			public void surfaceCreated(SurfaceHolder holder) {
-				Surface surface = holder.getSurface();
 				int bits[] = new int[width * height];
 				Arrays.fill(bits, 0);
 				display = Bitmap.createBitmap(bits, width, height, DISPLAY_CONFIG);
